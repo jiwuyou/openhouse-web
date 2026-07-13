@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="color-scheme" content="light dark">
+    <title>OpenHouse</title>
+    <link rel="stylesheet" href="/styles.css">
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body data-theme="mist">
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+    <section class="login-layer" id="login-layer" aria-labelledby="login-title" hidden>
+      <form class="login-card" id="password-login-form">
+        <div class="login-mark" aria-hidden="true">OH</div>
+        <p class="eyebrow">OPENHOUSE</p>
+        <h1 id="login-title">登录本机空间</h1>
+        <p class="login-copy">请输入 OpenHouse Web 密码。首次使用时，默认密码为 <strong>123456</strong>。</p>
+        <label class="password-field">
+          <span>密码</span>
+          <input id="login-password" name="password" type="password" autocomplete="current-password" minlength="6" maxlength="128" required autofocus>
+        </label>
+        <p class="form-message" id="login-message" role="alert" aria-live="polite"></p>
+        <button class="primary-button login-submit" type="submit">登录</button>
+      </form>
+    </section>
+    <main class="phone-shell" aria-label="OpenHouse">
+      <header class="status-bar">
+        <time id="clock">--:--</time>
+        <button class="connection-pill" id="connection-pill" type="button">
+          <span class="status-dot"></span>
+          <span id="connection-label">正在连接</span>
+        </button>
+      </header>
+
+      <div class="screen">
+        <section class="view view-active" data-view="desktop" aria-labelledby="desktop-title">
+          <div class="hero">
+            <div>
+              <p class="eyebrow">OPENHOUSE</p>
+              <h1 id="desktop-title">本机空间</h1>
+              <p class="hero-copy" id="desktop-summary">正在读取应用与服务状态。</p>
+            </div>
+            <button class="round-button" id="refresh-button" type="button" aria-label="刷新">↻</button>
+          </div>
+
+          <section class="overview-card" aria-label="系统概览">
+            <div>
+              <span class="overview-number" id="running-count">—</span>
+              <span class="overview-label">运行中</span>
+            </div>
+            <div>
+              <span class="overview-number" id="resident-count">—</span>
+              <span class="overview-label">常驻</span>
+            </div>
+            <div>
+              <span class="overview-number" id="service-count">—</span>
+              <span class="overview-label">全部服务</span>
+            </div>
+          </section>
+
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">APPLICATIONS</p>
+              <h2>应用</h2>
+            </div>
+            <button class="text-button" type="button" data-nav="services">管理服务</button>
+          </div>
+          <div class="app-grid" id="app-grid" aria-live="polite"></div>
+          <div class="empty-state hidden" id="app-empty">
+            <span class="empty-icon">⌂</span>
+            <strong>还没有可展示的应用</strong>
+            <p>组件注册后会自动出现在这里。</p>
+          </div>
+        </section>
+
+        <section class="view" data-view="services" aria-labelledby="services-title">
+          <div class="page-header">
+            <div>
+              <p class="eyebrow">CONTROL</p>
+              <h1 id="services-title">服务控制</h1>
+              <p>运行状态和常驻策略彼此独立。</p>
+            </div>
+            <button class="round-button" type="button" data-refresh>↻</button>
+          </div>
+          <div class="filter-row" role="group" aria-label="服务筛选">
+            <button class="filter-chip filter-active" type="button" data-filter="all">全部</button>
+            <button class="filter-chip" type="button" data-filter="resident">常驻</button>
+            <button class="filter-chip" type="button" data-filter="on-demand">按需</button>
+            <button class="filter-chip" type="button" data-filter="problem">异常</button>
+          </div>
+          <div class="service-list" id="service-list" aria-live="polite"></div>
+        </section>
+
+        <section class="view" data-view="maintenance" aria-labelledby="maintenance-title">
+          <div class="page-header">
+            <div>
+              <p class="eyebrow">RECOVERY</p>
+              <h1 id="maintenance-title">维护</h1>
+              <p>查看控制面健康、常驻异常和最近日志。</p>
+            </div>
+            <button class="round-button" type="button" data-refresh>↻</button>
+          </div>
+          <article class="maintenance-hero" id="maintenance-health">
+            <span class="large-status-dot"></span>
+            <div>
+              <strong>正在检查控制中枢</strong>
+              <p>service-manager 的连接状态会显示在这里。</p>
+            </div>
+          </article>
+          <section class="panel-card">
+            <div class="section-heading compact-heading">
+              <div>
+                <p class="eyebrow">ATTENTION</p>
+                <h2>需要关注</h2>
+              </div>
+            </div>
+            <div id="attention-list" class="attention-list"></div>
+          </section>
+          <section class="panel-card">
+            <div class="section-heading compact-heading">
+              <div>
+                <p class="eyebrow">TOOLS</p>
+                <h2>维护工具</h2>
+              </div>
+            </div>
+            <button class="tool-row" id="copy-diagnostics" type="button">
+              <span>复制诊断摘要</span><span>›</span>
+            </button>
+            <button class="tool-row" id="refresh-all" type="button">
+              <span>重新读取控制面</span><span>›</span>
+            </button>
+          </section>
+        </section>
+
+        <section class="view" data-view="settings" aria-labelledby="settings-title">
+          <div class="page-header">
+            <div>
+              <p class="eyebrow">PREFERENCES</p>
+              <h1 id="settings-title">设置</h1>
+              <p>只保存桌面与显示偏好。</p>
+            </div>
+          </div>
+          <form id="preferences-form" class="settings-card">
+            <fieldset>
+              <legend>外观主题</legend>
+              <div class="theme-grid">
+                <label class="theme-option mist-option">
+                  <input type="radio" name="theme" value="mist">
+                  <span>柔雾</span>
+                </label>
+                <label class="theme-option night-option">
+                  <input type="radio" name="theme" value="night">
+                  <span>夜色</span>
+                </label>
+                <label class="theme-option mint-option">
+                  <input type="radio" name="theme" value="mint">
+                  <span>薄荷</span>
+                </label>
+              </div>
+            </fieldset>
+            <label class="switch-row">
+              <span><strong>紧凑服务列表</strong><small>一屏展示更多服务。</small></span>
+              <input type="checkbox" id="compact-services">
+            </label>
+            <button class="primary-button" type="submit">保存设置</button>
+          </form>
+          <form id="password-form" class="settings-card password-settings-card">
+            <fieldset>
+              <legend>修改登录密码</legend>
+              <p class="settings-help">密码只用于本机 OpenHouse Web 登录，不会保存到浏览器偏好或诊断信息。</p>
+              <label class="password-field">
+                <span>当前密码</span>
+                <input name="currentPassword" type="password" autocomplete="current-password" minlength="6" maxlength="128" required>
+              </label>
+              <label class="password-field">
+                <span>新密码</span>
+                <input name="newPassword" type="password" autocomplete="new-password" minlength="6" maxlength="128" required>
+              </label>
+              <label class="password-field">
+                <span>确认新密码</span>
+                <input name="confirmPassword" type="password" autocomplete="new-password" minlength="6" maxlength="128" required>
+              </label>
+            </fieldset>
+            <p class="form-message" id="password-message" role="status" aria-live="polite"></p>
+            <button class="primary-button" type="submit">更新密码</button>
+          </form>
+          <article class="about-card">
+            <div class="app-mark">OH</div>
+            <div>
+              <strong>OpenHouse Web</strong>
+              <p>桌面与本机服务控制，不包含聊天和模型配置。</p>
+            </div>
+          </article>
+        </section>
+      </div>
+
+      <nav class="tab-bar" aria-label="主导航">
+        <button class="tab-active" type="button" data-nav="desktop"><span>⌂</span><small>桌面</small></button>
+        <button type="button" data-nav="services"><span>◫</span><small>服务</small></button>
+        <button type="button" data-nav="maintenance"><span>♢</span><small>维护</small></button>
+        <button type="button" data-nav="settings"><span>⚙</span><small>设置</small></button>
+      </nav>
+    </main>
+
+    <dialog id="service-dialog" class="sheet-dialog">
+      <form method="dialog" class="sheet-header">
+        <div>
+          <p class="eyebrow">SERVICE</p>
+          <h2 id="dialog-title">服务详情</h2>
+        </div>
+        <button class="round-button" value="close" aria-label="关闭">×</button>
+      </form>
+      <div id="dialog-body" class="sheet-body"></div>
+    </dialog>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </body>
+</html>

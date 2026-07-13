@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "id": "openhouse-web",
+  "service": {
+    "name": "openhouse-web",
+    "description": "OpenHouse local desktop and service control shell",
+    "provider": "termux-process",
+    "command": [
+      "/data/data/com.termux/files/usr/bin/node",
+      "/data/data/com.termux/files/home/.local/lib/openhouse-web/src/server.mjs"
+    ],
+    "working_dir": "/data/data/com.termux/files/home/.local/lib/openhouse-web",
+    "env": {
+      "OPENHOUSE_WEB_HOST": "127.0.0.1",
+      "OPENHOUSE_WEB_PORT": "22110",
+      "OPENHOUSE_WEB_TICKET_FILE": "/data/data/com.termux/files/home/.local/share/openhouseai/openhouse-web/bootstrap-ticket.json",
+      "SERVICE_MANAGER_URL": "http://127.0.0.1:20087"
+    },
+    "runtime": {
+      "home": "/data/data/com.termux/files/home",
+      "runtime": "termux",
+      "strategy": "termux-native-node"
+    },
+    "restart": {
+      "mode": "always",
+      "max_retries": 0
+    },
+    "health": [
+      {
+        "type": "http",
+        "url": "http://127.0.0.1:{{port:web}}/health",
+        "interval": "30s",
+        "timeout": "5s"
+      }
+    ],
+    "ports": [
+      {
+        "name": "web",
+        "host": "127.0.0.1",
+        "preferred": 22110,
+        "dynamic": false,
+        "pool": "local-web",
+        "protocol": "tcp",
+        "envVar": "OPENHOUSE_WEB_PORT",
+        "endpoint": {
+          "scheme": "http",
+          "path": "/"
+        }
+      }
+    ],
+    "enabled": true,
+    "residentByDefault": true,
+    "tags": [
+      "group:local-stack",
+      "openhouseai",
+      "openhouse-component:openhouse-web",
+      "runtime:termux",
+      "manager:termux-native"
+    ]
+  }
+}

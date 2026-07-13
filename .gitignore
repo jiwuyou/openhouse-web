@@ -1,0 +1,6 @@
+dist/
+coverage/
+*.log
+.DS_Store
+.openhouse-web/
+openhouse-web.tar

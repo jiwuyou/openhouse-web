@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "id": "openhouse-web",
+  "title": "OpenHouse",
+  "description": "OpenHouse 桌面、服务控制与维护入口。",
+  "kind": "system-shell",
+  "shellMenu": {
+    "visible": false,
+    "section": "system",
+    "order": 0,
+    "entry": {
+      "type": "webview",
+      "url": "http://127.0.0.1:22110/"
+    },
+    "controlEntry": {
+      "type": "service-control",
+      "serviceNames": ["openhouse-web"],
+      "serviceRefs": ["service-manager://services/openhouse-web"]
+    }
+  },
+  "smallphoneApp": {
+    "visible": false,
+    "section": "system",
+    "order": 0,
+    "icon": "home",
+    "entry": {
+      "type": "webview",
+      "url": "http://127.0.0.1:22110/"
+    },
+    "controlEntry": {
+      "type": "service-control",
+      "serviceNames": ["openhouse-web"],
+      "serviceRefs": ["service-manager://services/openhouse-web"]
+    }
+  },
+  "serviceManager": {
+    "required": true,
+    "services": [
+      {
+        "name": "openhouse-web",
+        "title": "OpenHouse Web",
+        "role": "system-shell",
+        "port": 22110,
+        "url": "http://127.0.0.1:22110/",
+        "serviceRef": "service-manager://services/openhouse-web",
+        "health": {
+          "type": "http",
+          "url": "http://127.0.0.1:22110/health"
+        },
+        "controls": ["status", "start", "stop", "restart", "logs", "repair"],
+        "repairActionRef": "service-manager://actions/openhouse-web.repair"
+      }
+    ]
+  },
+  "ai": {
+    "visible": false,
+    "summaryDoc": "",
+    "capabilities": "",
+    "intents": []
+  }
+}
