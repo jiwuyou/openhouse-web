@@ -34,6 +34,16 @@ const service = JSON.parse(await readFile(path.join(root, 'config/openhouse-web.
 if (service.id !== 'openhouse-web') throw new Error('service id must be openhouse-web');
 if (service.service?.residentByDefault !== true) throw new Error('openhouse-web must be resident by default');
 if (service.service?.ports?.[0]?.preferred !== 22110) throw new Error('openhouse-web must prefer port 22110');
+if (service.service?.env?.SERVICE_MANAGER_CONFIG !== '/data/data/com.termux/files/home/.config/openhouseai/service-manager/config.json') {
+  throw new Error('openhouse-web must use the OpenHouse service-manager config');
+}
+
+const component = JSON.parse(await readFile(path.join(root, 'config/openhouse.component.json'), 'utf8'));
+if (component.kind !== 'app') throw new Error('openhouse-web must be registered as a normal app');
+if (component.shellMenu?.visible !== true || component.shellMenu?.desktop?.visible !== true) {
+  throw new Error('openhouse-web must be visible in the shell menu and desktop');
+}
+if (component.smallphoneApp?.visible !== true) throw new Error('openhouse-web must be visible in the app list');
 
 const client = await readFile(path.join(root, 'src/service-manager-client.mjs'), 'utf8');
 for (const required of [

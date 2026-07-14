@@ -3,11 +3,17 @@
   "id": "openhouse-web",
   "title": "OpenHouse",
   "description": "OpenHouse 桌面、服务控制与维护入口。",
-  "kind": "system-shell",
+  "kind": "app",
   "shellMenu": {
-    "visible": false,
+    "visible": true,
+    "title": "OpenHouse Web",
     "section": "system",
     "order": 0,
+    "desktop": {
+      "visible": true,
+      "icon": "home",
+      "order": 0
+    },
     "entry": {
       "type": "webview",
       "url": "http://127.0.0.1:22110/"
@@ -19,7 +25,8 @@
     }
   },
   "smallphoneApp": {
-    "visible": false,
+    "visible": true,
+    "title": "OpenHouse Web",
     "section": "system",
     "order": 0,
     "icon": "home",
