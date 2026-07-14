@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
-import { chmod, link, lstat, mkdir, open, readFile, rename, unlink } from 'node:fs/promises';
+import { constants } from 'node:fs';
+import { chmod, copyFile, lstat, mkdir, open, readFile, rename, unlink } from 'node:fs/promises';
 import path from 'node:path';
 
 export const DEFAULT_PASSWORD = '123456';
@@ -119,7 +120,7 @@ export class PasswordStore {
       handle = undefined;
       await chmod(temporary, 0o600);
       if (createOnly) {
-        await link(temporary, this.#filePath);
+        await copyFile(temporary, this.#filePath, constants.COPYFILE_EXCL);
         await unlink(temporary);
       } else {
         await rename(temporary, this.#filePath);

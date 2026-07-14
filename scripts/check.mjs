@@ -72,9 +72,13 @@ for (const required of [
   "`${password}\\n`",
   '0o700',
   '0o600',
+  'copyFile(temporary, this.#filePath, constants.COPYFILE_EXCL)',
   "rename(temporary, this.#filePath)",
 ]) {
   if (!passwordStore.includes(required)) throw new Error(`missing password storage invariant: ${required}`);
+}
+if (passwordStore.includes('await link(')) {
+  throw new Error('password creation must not depend on hard links');
 }
 for (const forbidden of ['console.log(password', 'console.error(password', 'JSON.stringify({ password']) {
   if (server.includes(forbidden) || passwordStore.includes(forbidden)) {

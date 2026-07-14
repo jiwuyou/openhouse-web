@@ -23,6 +23,27 @@ test('missing password is atomically initialized to the fixed default with priva
   assert.deepEqual(await readdir(dataDir), ['password']);
 });
 
+test('concurrent stores initialize once without overwriting the winner or leaving temporary files', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'openhouse-web-password-concurrent-'));
+  const dataDir = path.join(root, 'data');
+  const passwordPath = path.join(dataDir, 'password');
+  const first = new PasswordStore(passwordPath);
+  const second = new PasswordStore(passwordPath);
+
+  assert.deepEqual(
+    await Promise.all([first.initialize(), second.initialize()]),
+    [DEFAULT_PASSWORD, DEFAULT_PASSWORD],
+  );
+  await first.replace(DEFAULT_PASSWORD, 'winner-password');
+
+  const later = new PasswordStore(passwordPath);
+  assert.equal(await later.initialize(), 'winner-password');
+  assert.equal(await readFile(passwordPath, 'utf8'), 'winner-password\n');
+  assert.equal((await stat(dataDir)).mode & 0o777, 0o700);
+  assert.equal((await stat(passwordPath)).mode & 0o777, 0o600);
+  assert.deepEqual(await readdir(dataDir), ['password']);
+});
+
 test('existing plaintext password is preserved and permissions are tightened', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'openhouse-web-password-existing-'));
   const dataDir = path.join(root, 'data');
