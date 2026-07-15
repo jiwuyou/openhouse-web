@@ -8,10 +8,29 @@ import test from 'node:test';
 import { AuthManager } from '../src/auth.mjs';
 import { createApp } from '../src/server.mjs';
 
+const browserApp = await readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+const normalizeSource = browserApp.slice(
+  browserApp.indexOf('function normalizeServiceStatus'),
+  browserApp.indexOf('function idOfResidency'),
+);
+const isRunningSource = browserApp.slice(
+  browserApp.indexOf('function isRunning'),
+  browserApp.indexOf('function isProblem'),
+);
+const { normalizeServiceStatus, isRunning } = Function(
+  `'use strict'; ${normalizeSource}\n${isRunningSource}\nreturn { normalizeServiceStatus, isRunning };`,
+)();
+
 function listen(server) {
   return new Promise((resolve, reject) => {
     server.once('error', reject);
     server.listen(0, '127.0.0.1', () => resolve(server.address().port));
+  });
+}
+
+function close(server) {
+  return new Promise((resolve, reject) => {
+    server.close((error) => (error ? reject(error) : resolve()));
   });
 }
 
@@ -27,13 +46,26 @@ function requestStatus(port, headers) {
 }
 
 function mockUpstream() {
-  const policies = new Map([['pi-web', { serviceId: 'pi-web', resident: false, suspendedByUser: false, registered: true, updatedAt: null, lastError: null }]]);
-  const service = { id: 'pi-web', spec: { name: 'pi-web', description: 'Pi Web', provider: 'termux-process', tags: ['openhouse-component:pi-web'] } };
+  const services = [
+    { id: 'pi-web', spec: { name: 'pi-web', description: 'Pi Web', provider: 'termux-process', tags: ['openhouse-component:pi-web'] } },
+    { id: 'stopped-service', spec: { name: 'stopped-service', description: 'Stopped service', provider: 'termux-process', tags: [] } },
+    { id: 'failed-service', spec: { name: 'failed-service', description: 'Failed service', provider: 'termux-process', tags: [] } },
+    { id: 'unknown-service', spec: { name: 'unknown-service', description: 'Unknown service', provider: 'termux-process', tags: [] } },
+  ];
+  const service = services[0];
+  const policies = new Map(services.map(({ id }) => [id, {
+    serviceId: id, resident: false, suspendedByUser: false, registered: true, updatedAt: null, lastError: null,
+  }]));
   return createServer(async (req, res) => {
     assert.equal(req.headers.authorization, 'Bearer integration-secret');
     const json = (status, value) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(value)); };
-    if (req.url === '/api/v1/services') return json(200, [service]);
-    if (req.url === '/api/v1/services/statuses') return json(200, [{ service_id: 'pi-web', state: 'running', provider: 'termux-process', observed_at: new Date().toISOString() }]);
+    if (req.url === '/api/v1/services') return json(200, services);
+    if (req.url === '/api/v1/services/statuses') return json(200, [
+      { service, status: { service_id: 'pi-web', state: 'running', provider: 'termux-process', observed_at: new Date().toISOString() } },
+      { service: services[1], status: { state: 'stopped', provider: 'termux-process', observed_at: new Date().toISOString() } },
+      { service: services[2], status: null, error: 'provider status probe failed' },
+      { service: services[3], status: {}, error: '' },
+    ]);
     if (req.url === '/api/v1/residency' && req.method === 'GET') return json(200, [...policies.values()]);
     if (req.url === '/api/v1/registry/components') return json(200, [{ id: 'pi-web', path: 'components/pi-web.json', manifest: { id: 'pi-web', title: 'Pi Web', kind: 'app', shellMenu: { visible: true, entry: { type: 'webview', url: 'http://127.0.0.1:30141/' }, controlEntry: { serviceNames: ['pi-web'] } }, smallphoneApp: {}, serviceManager: { services: [] }, ai: {} } }]);
     if (req.url === '/api/v1/services/pi-web/residency' && req.method === 'PUT') {
@@ -53,7 +85,7 @@ function mockUpstream() {
 test('server enforces host, origin and CSRF while keeping token server-side', async (t) => {
   const upstream = mockUpstream();
   const upstreamPort = await listen(upstream);
-  t.after(() => upstream.close());
+  t.after(() => close(upstream));
   const dataDir = await mkdtemp(path.join(os.tmpdir(), 'openhouse-web-integration-'));
   const config = {
     host: '127.0.0.1', port: 0, dataDir,
@@ -71,7 +103,7 @@ test('server enforces host, origin and CSRF while keeping token server-side', as
   const bootstrapTicket = authManager.issueTicket().ticket;
   const appServer = createServer(createApp(config, { authManager }));
   const port = await listen(appServer);
-  t.after(() => appServer.close());
+  t.after(() => close(appServer));
   const host = `127.0.0.1:${port}`;
   config.allowedHosts.add(host);
   const origin = `http://${host}`;
@@ -153,6 +185,29 @@ test('server enforces host, origin and CSRF while keeping token server-side', as
   const dashboardText = await dashboardResponse.text();
   assert.equal(dashboardResponse.status, 200);
   assert.equal(dashboardText.includes('integration-secret'), false);
+  const dashboard = JSON.parse(dashboardText);
+  assert.equal(dashboard.services.length, 4);
+  assert.equal(dashboard.statuses.length, 4);
+  assert.deepEqual(dashboard.statuses.map((item) => item.service.id), [
+    'pi-web', 'stopped-service', 'failed-service', 'unknown-service',
+  ]);
+  assert.equal(dashboard.statuses[0].status.state, 'running');
+  assert.equal(dashboard.statuses[1].status.state, 'stopped');
+  assert.equal(dashboard.statuses[2].status, null);
+  assert.equal(dashboard.statuses[2].error, 'provider status probe failed');
+  const normalizedStatuses = dashboard.statuses.map(normalizeServiceStatus);
+  assert.deepEqual(normalizedStatuses.map((item) => [item.service_id, item.state]), [
+    ['pi-web', 'running'],
+    ['stopped-service', 'stopped'],
+    ['failed-service', 'failed'],
+    ['unknown-service', 'unknown'],
+  ]);
+  assert.equal(normalizedStatuses[2].message, 'provider status probe failed');
+  const statusById = new Map(normalizedStatuses.map((item) => [item.service_id, item]));
+  const runningCount = dashboard.services
+    .filter(({ id }) => isRunning(statusById.get(id)?.state))
+    .length;
+  assert.equal(runningCount, 1);
 
   const authenticatedSession = await fetch(`${origin}/api/v1/session`, { headers: { Cookie: cookie } });
   assert.equal(authenticatedSession.status, 200);

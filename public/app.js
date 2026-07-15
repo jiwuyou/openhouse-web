@@ -31,6 +31,26 @@ function idOfStatus(status) {
   return String(status?.serviceId || status?.service_id || status?.id || '');
 }
 
+function normalizeServiceStatus(item) {
+  const status = item?.status;
+  const serviceId = String(
+    status?.serviceId || status?.service_id
+    || item?.service?.id || item?.service?.serviceId || item?.service?.service_id
+    || '',
+  );
+  if (!serviceId) return null;
+  const error = typeof item?.error === 'string' ? item.error.trim() : '';
+  if (!status || typeof status !== 'object' || Array.isArray(status)) {
+    return { service_id: serviceId, state: error ? 'failed' : 'unknown', message: error };
+  }
+  const normalized = { ...status, service_id: serviceId };
+  const statusState = typeof status.state === 'string' ? status.state.trim().toLowerCase() : '';
+  normalized.state = error ? 'failed' : (statusState || 'unknown');
+  if (error) normalized.message = error;
+  else if (typeof normalized.message !== 'string') normalized.message = '';
+  return normalized;
+}
+
 function idOfResidency(policy) {
   return String(policy?.serviceId || policy?.service_id || policy?.id || '');
 }
@@ -160,7 +180,7 @@ async function initializeSession() {
 function normalizeDashboard(payload) {
   state.services = arrayFrom(payload.services, ['services']);
   state.statuses = new Map(arrayFrom(payload.statuses, ['statuses', 'services'])
-    .filter(idOfStatus).map((item) => [idOfStatus(item), item]));
+    .map(normalizeServiceStatus).filter(Boolean).map((item) => [idOfStatus(item), item]));
   state.residency = new Map(arrayFrom(payload.residency, ['residency', 'policies', 'services'])
     .filter(idOfResidency).map((item) => [idOfResidency(item), normalizeResidencyPolicy(item)]));
   state.components = arrayFrom(payload.components, ['components']);
